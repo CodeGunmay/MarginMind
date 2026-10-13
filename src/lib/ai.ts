@@ -20,8 +20,8 @@ export function insightFor(d: Analyzed, ctx: Ctx) {
   let action = '';
   if (d.cls === 'star') action = `Protect and promote this dish. Keep it prominent on the menu, maintain portion consistency, and consider bundling it with a high-margin side or beverage to lift average order value.`;
   if (d.cls === 'plowhorse') {
-    const need = Math.max(0, ctx.marT - d.cm);
-    action = `This dish brings traffic but thin margins. ${need > 0 ? `A price increase of about ${money(Math.ceil(need / 5) * 5, s)} would bring it to the menu-average margin —` : ''} also explore re-engineering the recipe (portion or high-cost ingredients) before touching price, since demand is strong.`;
+    const need = Math.min(Math.max(0, ctx.marT - d.cm),d.price*(ctx.settings.maxSuggestedPriceIncreasePct??10)/100);
+    action = `This dish brings traffic but thin margins. ${need > 0 ? `A price increase of about ${money(need, s)} would bring it to the menu-average margin —` : ''} also explore re-engineering the recipe (portion or high-cost ingredients) before touching price, since demand is strong.`;
   }
   if (d.cls === 'puzzle') action = `Margins are excellent but it isn't selling. Improve menu placement (top-right position, server recommendations, photos), feature it in combos or specials, and test a small visibility push before discounting.`;
   if (d.cls === 'dog') action = `Low sales and low margins. Consider repositioning, repricing and recipe re-engineering first; if no improvement over the next cycle, retiring it frees prep time and inventory for stronger dishes.`;
@@ -35,11 +35,11 @@ export function recommendations(ctx: Ctx): Rec[] {
   const target = ctx.settings.foodCostTarget;
 
   for (const d of ctx.rows) {
-    const need = Math.max(0, ctx.marT - d.cm);
-    const priceForTarget = Math.ceil((d.cost / (target / 100)) / 5) * 5;
+    const need = Math.min(Math.max(0, ctx.marT - d.cm),d.price*(ctx.settings.maxSuggestedPriceIncreasePct??10)/100);
+    const priceForTarget = Math.min(Math.ceil((d.cost / (target / 100)) / 5) * 5,Math.floor(d.price*(1+(ctx.settings.maxSuggestedPriceIncreasePct??10)/100)*100)/100);
 
     if (d.cls === 'plowhorse') {
-      const sug = Math.max(Math.ceil((d.price + need) / 5) * 5, priceForTarget);
+      const sug = Math.min(Math.max(Math.ceil((d.price + need) / 5) * 5, priceForTarget),Math.floor(d.price*(1+(ctx.settings.maxSuggestedPriceIncreasePct??10)/100)*100)/100);
       const delta = sug - d.price;
       if (delta >= 5) {
         recs.push({
@@ -133,7 +133,7 @@ export function profitLeaks(ctx: Ctx): Leak[] {
         id: `hv-${d.id}`, severity: excess * d.units > 4000 ? 'high' : 'medium', dishId: d.id, title: d.name,
         problem: `High sales but low margin — food cost ${d.fcPct.toFixed(1)}% vs ${target}% target.`,
         impact: excess * d.units,
-        action: `Reprice by ${money(Math.max(10, Math.ceil((ctx.marT - d.cm) / 5) * 5), s)} or trim portion/high-cost ingredients.`,
+        action: `Reprice by ${money(Math.min(Math.max(0,ctx.marT-d.cm),d.price*(ctx.settings.maxSuggestedPriceIncreasePct??10)/100), s)} or trim portion/high-cost ingredients.`,
       });
     }
     if (d.fcPct > target + 15 && d.pop === 'low') {
@@ -200,42 +200,11 @@ export function optimizePlan(ctx: Ctx) {
 }
 
 /* ---------------- ingredient substitution ---------------- */
-const SUBS: Record<string, { alt: string; price: number; unit: string; note: string }[]> = {
-  cream: [
-    { alt: 'Cooking cream (15% fat)', price: 180, unit: 'L', note: 'Slightly lighter body; works well in pasta and makhani gravies.' },
-    { alt: 'Cashew cream (house-made)', price: 165, unit: 'L', note: 'Dairy-light option; adds mild nuttiness — validate with chef.' },
-  ],
-  cheese: [
-    { alt: 'Processed cheese block', price: 380, unit: 'kg', note: 'Melt profile differs slightly; fine for burgers, test on pizzas.' },
-    { alt: 'Mozzarella–cheddar blend', price: 420, unit: 'kg', note: 'Good stretch + flavour; slightly sharper taste.' },
-  ],
-  butter: [
-    { alt: 'White butter (makhani)', price: 340, unit: 'kg', note: 'Fresh dairy flavour; shorter shelf life — plan inventory.' },
-    { alt: 'Bakery margarine', price: 320, unit: 'kg', note: 'Noticeable flavour change; only for non-signature dishes.' },
-  ],
-  chick: [
-    { alt: 'Boneless thigh (vs breast/curry cut)', price: 250, unit: 'kg', note: 'Juicier and cheaper; adjust trim/portioning.' },
-  ],
-  paneer: [
-    { alt: 'Firm tofu', price: 260, unit: 'kg', note: 'Texturally different; position as vegan option instead of direct swap.' },
-  ],
-  coffee: [
-    { alt: 'Premium instant blend', price: 650, unit: 'kg', note: 'Consistent and faster prep; slight flavour trade-off.' },
-  ],
-  mushroom: [
-    { alt: 'Button mushroom (wholesale)', price: 200, unit: 'kg', note: 'Seasonal pricing; lock a weekly rate.' },
-  ],
-};
-
-export function substitutionsFor(ingId: string) {
-  return SUBS[ingId] || [];
+export function substitutionsFor(ingId:string,ings:import('../types').Ingredient[] = []) {
+ const ingredient=ings.find(i=>i.id===ingId);if(!ingredient)return [];
+ return ings.filter(i=>i.id!==ingredient.id&&i.unit===ingredient.unit&&i.cat===ingredient.cat&&i.price>0&&i.price<ingredient.price).map(i=>({alt:i.name,price:i.price,unit:i.unit,note:'Owner-entered price; same ingredient group and unit. Chef must confirm suitability, allergens and portion conversion.'}));
 }
-export function substitutableIngredients(ctx: Ctx) {
-  return ctx.ings.filter((i) => SUBS[i.id]).map((i) => {
-    const usedIn = ctx.rows.filter((d) => d.recipe.some((r) => r.ing === i.id)).length;
-    return { ...i, usedIn };
-  });
-}
+export function substitutableIngredients(ctx:Ctx){return ctx.ings.filter(i=>substitutionsFor(i.id,ctx.ings).length>0).map(i=>({...i,usedIn:ctx.rows.filter(d=>d.recipe.some(r=>r.ing===i.id)).length}));}
 
 /* ---------------- menu description generator ---------------- */
 export function describeDish(d: Analyzed, ctx: Ctx, variant = 0): string {
@@ -299,7 +268,7 @@ export function askAI(qRaw: string, ctx: Ctx, recs: Rec[], leaks: Leak[]): strin
   }
   if (q.includes('food cost') && (q.includes('high') || q.includes('why') || q.includes('reduce'))) {
     const worst = [...ctx.rows].sort((a, b) => b.fcPct - a.fcPct).slice(0, 3);
-    return `Your menu average food cost is ${ctx.totals.avgFC.toFixed(1)}% (target ${ctx.settings.foodCostTarget}%). The biggest offenders:\n${worst.map((d, i) => `${i + 1}. ${d.name} — ${d.fcPct.toFixed(1)}% (cost ${money(d.cost, s)} on ${money(d.price, s)} price)`).join('\n')}\nMain drivers: cream, cheese and chicken prices. See Ingredient Costs for the spike breakdown.`;
+    return `Your menu average food cost is ${ctx.totals.avgFC.toFixed(1)}% (target ${ctx.settings.foodCostTarget}%). The biggest offenders:\n${worst.map((d, i) => `${i + 1}. ${d.name} — ${d.fcPct.toFixed(1)}% (cost ${money(d.cost, s)} on ${money(d.price, s)} price)`).join('\n')}\nCheck your own ingredient prices, recorded quantities and portion yields to identify the drivers.`;
   }
   if (q.includes('los') || q.includes('dog') || q.includes('worst') || q.includes('underperform')) {
     const dogs = ctx.rows.filter((d) => d.cls === 'dog').sort((a, b) => a.contribution - b.contribution);
@@ -308,10 +277,11 @@ export function askAI(qRaw: string, ctx: Ctx, recs: Rec[], leaks: Leak[]): strin
       : 'Good news — no dish currently sits in the DOG quadrant.';
   }
   if (q.includes('chicken') && (q.includes('10') || q.includes('increase') || q.includes('inflation') || q.includes('rise'))) {
-    const ing = ctx.ings.find((i) => i.id === 'chick')!;
+    const ing = ctx.ings.find((i) => /chicken/i.test(i.name));
+    if(!ing)return 'Add your chicken ingredient with its actual purchase price before simulating a cost increase.';
     const np = ing.price * 1.1;
-    const affected = ctx.rows.filter((d) => d.recipe.some((r) => r.ing === 'chick')).map((d) => {
-      const it = d.recipe.find((r) => r.ing === 'chick')!;
+    const affected = ctx.rows.filter((d) => d.recipe.some((r) => r.ing === ing.id)).map((d) => {
+      const it = d.recipe.find((r) => r.ing === ing.id)!;
       const perUnit = (it.qty / 1000) * (np - ing.price);
       return { d, impact: perUnit * d.units, perUnit };
     });
@@ -321,7 +291,7 @@ export function askAI(qRaw: string, ctx: Ctx, recs: Rec[], leaks: Leak[]): strin
   if (q.includes('reprice') || q.includes('price')) {
     const plow = ctx.rows.filter((d) => d.cls === 'plowhorse').sort((a, b) => (ctx.marT - b.cm) * b.units - (ctx.marT - a.cm) * a.units);
     return plow.length
-      ? `Reprice your PLOWHORSES first — strong demand, weak margin:\n${plow.slice(0, 3).map((d, i) => `${i + 1}. ${d.name}: +${money(Math.max(10, Math.ceil((ctx.marT - d.cm) / 5) * 5), s)} lifts contribution ≈ ${money(Math.max(10, Math.ceil((ctx.marT - d.cm) / 5) * 5) * d.units, s)}/mo if volume holds`).join('\n')}\nThese are estimates — validate price sensitivity before applying.`
+      ? `Reprice your PLOWHORSES first — strong demand, weak margin:\n${plow.slice(0, 3).map((d, i) => `${i + 1}. ${d.name}: +${money(Math.min(Math.max(0,ctx.marT-d.cm),d.price*(ctx.settings.maxSuggestedPriceIncreasePct??10)/100), s)} lifts contribution ≈ ${money(Math.max(10, Math.ceil((ctx.marT - d.cm) / 5) * 5) * d.units, s)}/mo if volume holds`).join('\n')}\nThese are estimates — validate price sensitivity before applying.`
       : 'No plowhorse needs repricing right now. Margins track the menu average.';
   }
   if (q.includes('leak')) {

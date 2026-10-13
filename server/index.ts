@@ -5,6 +5,11 @@ import { ENV } from './env';
 import { api } from './routes';
 
 const app = express();
+const proxyHops=Number(process.env.APP_PROXY_HOPS||0);
+if(Number.isInteger(proxyHops)&&proxyHops>=0&&proxyHops<=5)app.set('trust proxy',proxyHops);
+app.disable('x-powered-by');
+app.use((_req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','same-origin');next();});
+app.get('/healthz',(_req,res)=>res.json({ok:true}));
 app.use(express.json({ limit: '12mb' })); // images arrive as JSON base64 for OCR
 
 // tiny request log

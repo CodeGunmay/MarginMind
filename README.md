@@ -48,6 +48,7 @@ Location supplies context; the app does not invent city prices. Menu categories 
 npm run typecheck
 npm run test:owners
 npm run test:otp
+npm run test:mentor
 npm run test:render
 npm run build
 ```
@@ -62,4 +63,14 @@ Do not commit `.env`, database files, uploads, or private restaurant data. Produ
 
 ## Current limitations
 
-SMS is mocked by default. Twilio and Firebase are credential-reading stubs and do not send messages. External AI calls and microphone workflows need hands-on verification. Dedicated customer-segment targets, stock-aware replacement alternatives and a combined monthly action-plan view are not implemented. Restaurant pilots and measured profit improvements remain pending. This repository is a working progress build, not a claim of production readiness.
+SMS is mocked by default. Twilio and Firebase are credential-reading stubs and do not send messages. External AI calls and microphone workflows need hands-on verification. Business profiles, sensitivity-capped recommendations and the monthly Action Plan are implemented. Restaurant pilots and measured profit improvements remain pending. This repository is a working progress build, not a claim of production readiness.
+
+## Mentor-feedback update
+
+Settings now includes establishment type, area, customer segment and editable price sensitivity. Save the profile to set a default food-cost target; the owner can fine-tune that target afterward. Suggested price increases are capped at 5%, 10% or 15% for high, medium or low sensitivity. Hospitality planning defaults live in `server/hospitality-defaults.json`; edit them deliberately and restart the service. These assumptions are not learned demand models.
+
+Action Plan gives costed price/ingredient-quantity trials per dish. Dogs can be replaced by higher-contribution existing recipes in the same category if at least 80% of both ingredient lines and ingredient cost are confirmed in stock. No recipe or price is invented. Ingredient availability must be confirmed by the owner; stock quantity and depletion are not tracked.
+
+Select one action per dish to compare recorded monthly revenue, direct recipe cost %, contribution per cover proxy and operating profit. The default transfer assumption is 60%, editable from 0% to 100%; sales move within the category, weighted by recorded sales or equally if none exist. Lost sales are removed. Fixed expenses stay constant and variable expenses scale at the recorded revenue rate. No menu edits or sales changes occur from selecting actions. Taste, portion adequacy, demand changes, taxes and unrecorded costs require owner review. One dish unit proxies one cover; actual guest counts are not recorded.
+
+Additional verification: 48 mentor-feedback API checks and 12 basic server-render checks. Production-dependency audit reports zero known advisories at the time of this update; 7 development-tooling advisories remain and need a build-tool migration. See HOSTING.md for free temporary hosting limits, paid persistence, and private SQLite backups.

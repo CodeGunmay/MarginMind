@@ -1,3 +1,4 @@
+import BusinessProfile from '../components/BusinessProfile';
 import React, { useState } from 'react';
 import { Store, Coins, Percent, Target, Database, RotateCcw, Save, Eraser, Bot } from 'lucide-react';
 import { useApp } from '../store/AppContext';
@@ -24,6 +25,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl space-y-4">
+      <BusinessProfile/>
       <Card>
         <CardHeader title={<span className="flex items-center gap-2"><Store size={16} className="text-slate-400" /> Restaurant Profile</span>} />
         <div className="grid sm:grid-cols-2 gap-4 p-5 pt-3">

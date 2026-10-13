@@ -91,6 +91,7 @@ export default function Recommendations() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4"><h2 className="font-semibold">Specific actions with monthly profit impact</h2><p className="text-sm text-slate-600 mt-1">Use the Action Plan for costed recipe changes, sensitivity-capped prices, stocked replacements and before / after operating profit.</p><button onClick={()=>nav('/action-plan')} className="mt-3 bg-slate-900 text-white rounded-xl px-4 py-2 text-sm">Open Action Plan</button></div>
       <div className="flex flex-wrap gap-2 anim-fade-up">
         {tabs.map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)} className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 text-[13px] font-semibold border transition-colors ${tab === t.k ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
@@ -205,7 +206,7 @@ export default function Recommendations() {
           </Card>
           {(() => {
             const ing = subIngs.find((x) => x.id === subIng) || ings.find((x) => x.id === subIng);
-            const subs = substitutionsFor(subIng);
+            const subs = substitutionsFor(subIng,ings);
             if (!ing) return null;
             if (!subs.length) return <EmptyState title="No alternatives on file" hint="This ingredient has no validated substitute suggestions in the reference knowledge base." />;
             const users = analyzed.rows.filter((dd) => dd.recipe.some((r) => r.ing === ing.id));

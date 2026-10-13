@@ -1,3 +1,4 @@
+import {selectionSchema,stockSchema,stockAvailability,saveStock,planRecommendations,projectPlan} from './action-plan';
 import { businessSchema,expenseSchema,monthSchema,getBusiness,saveBusiness,addExpense,profitability } from './expenses';
 import { Router } from 'express';
 import * as store from './db';
@@ -17,6 +18,10 @@ export const api = Router();
 
 api.use('/auth', auth);
 api.use(sameOrigin, requireAccount);
+api.get('/pantry-availability',(_req,res)=>res.json(stockAvailability()));
+api.put('/pantry-availability',handle(stockSchema),(req,res)=>{if(!saveStock(req.body))return res.status(404).json({error:'Ingredient not found'});res.json({ok:true});});
+api.get('/action-plan',(req,res)=>{const month=monthSchema.safeParse(req.query.month);if(!month.success)return res.status(400).json({error:'Select a valid month'});res.json(planRecommendations(month.data));});
+api.post('/action-plan/preview',handle(selectionSchema),ah(async(req,res)=>res.json(projectPlan(req.body))));
 api.get('/business', (_req,res)=>res.json(getBusiness()));
 api.put('/business',handle(businessSchema),(req,res)=>res.json(saveBusiness(req.body)));
 api.get('/expenses', (req,res)=>{const month=monthSchema.safeParse(req.query.month);if(!month.success)return res.status(400).json({error:'Select a valid month (YYYY-MM)'});res.json(profitability(month.data));});

@@ -1,11 +1,11 @@
-# Current release: 13 October 2026
+# MarginMind progress build — 13 October 2026
 
-Completed: authenticated owner workspaces, OTP signup/recovery, private ingredients/recipes/sales, menu analysis, scenarios, operating expense entry/corrections, estimated operating profit and break-even.
+Completed: authenticated owner workspaces, mock OTP signup/recovery, private ingredients/recipes/sales, menu analysis, scenarios, operating expenses/corrections, estimated profit and break-even.
 
-Verified: 56 owner/API checks, 29 OTP checks, typecheck and production build. Public presentation-instance API smoke checks cover mock OTP signup, verification, password login, restaurant data and expense endpoints using Secure HttpOnly cookies. Full interactive browser workflows and external integrations are not exhaustively verified.
+Mentor update: business type, area and customer segment; editable price sensitivity and configurable defaults; quantified price/ingredient trials; same-category higher-contribution replacements based on existing costed recipes and owner-confirmed pantry availability; monthly Action Plan with before/after revenue, direct recipe cost %, contribution/cover proxy and profit after operating expenses. Sales transfer defaults to 60% and is editable. Selecting actions does not change menu or sales records.
 
-No genuine restaurant records or credentials are included. New accounts start empty. The short-lived Cloudflare presentation URL is a separate local instance and is not a persistent deployment.
+Verified: 56 owner/API checks, 29 OTP checks, 48 mentor-feedback checks, 12 basic server-render checks, typecheck and production build. Browser checks verify synthetic-account login, business-profile save/default refresh, and action selection with profit/food-cost recalculation. Coverage is not exhaustive. Production-dependency audit reports zero known advisories; 7 development-tool advisories remain. Build still emits a large-chunk warning.
 
-Remaining: real SMS provider implementation, live AI verification, customer-segment analysis, replacement suggestions, action-plan comparisons, restaurant pilot and durable hosting. Bundling currently emits a large-chunk warning; this does not fail the build.
+Remaining external dependencies: real SMS provider implementation and credentials, optional live AI key/verification, hosting account and persistent storage, restaurant records and outcome validation. Covers use dish units until guest counts are available. No claim of actual measured profit improvement or verified real phone ownership.
 
-Dependency audit: 10 reported advisories (4 moderate, 6 high). Dependency remediation is pending; no claim of a security-clean production release. Fresh npm ci, typecheck, 10 basic server-render checks and build pass.
+No private restaurant records, credentials, dependency folders or generated databases are committed. The existing public tunnel uses a separate presentation database and relies on the laptop staying awake and online. HOSTING.md describes free hosting with disposable storage and paid persistent storage; neither service is activated automatically.

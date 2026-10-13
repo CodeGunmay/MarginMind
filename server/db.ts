@@ -1,3 +1,4 @@
+import hospitalityDefaults from './hospitality-defaults.json';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -158,7 +159,10 @@ for (const d of db.prepare('SELECT id FROM dishes').all() as any[]) recomputeDis
 /* ---------------- queries ---------------- */
 
 export function getSettings() {
-  return db.prepare('SELECT restaurant, location, currency, taxPct, foodCostTarget, popThreshold, marginThreshold FROM settings WHERE id = 1').get() as any;
+  const settings=db.prepare('SELECT restaurant, location, currency, taxPct, foodCostTarget, popThreshold, marginThreshold FROM settings WHERE id = 1').get() as any;
+  const exists=db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='business_context'").get();
+  const profile=exists?db.prepare('SELECT priceSensitivity FROM business_context WHERE id=1').get() as any:null;
+  return {...settings,maxSuggestedPriceIncreasePct:(hospitalityDefaults.sensitivity as any)[profile?.priceSensitivity||'medium'].maxPriceIncreasePct};
 }
 
 export function saveSettings(patch: Record<string, any>) {

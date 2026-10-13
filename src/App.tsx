@@ -14,6 +14,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import { EmptyState } from './components/ui';
 import { AuthProvider, useAuth } from './store/AuthContext';
+import ActionPlan from './pages/ActionPlan';
 import Expenses from './pages/Expenses';
 import Welcome from './pages/Welcome';
 
@@ -33,6 +34,7 @@ function Workspace() {
           <Route path="dish/:id" element={<DishDetail />} />
           <Route path="costing" element={<RecipeCosting />} />
           <Route path="sales" element={<SalesAnalytics />} />
+          <Route path="action-plan" element={<ActionPlan />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="ingredients" element={<Ingredients />} />
           <Route path="ai" element={<Recommendations />} />

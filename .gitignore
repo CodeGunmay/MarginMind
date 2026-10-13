@@ -12,3 +12,4 @@ verification-data/
 *.log
 *.local
 .DS_Store
+backups/

@@ -45,7 +45,7 @@ function setSession(res:any,id:string) {const raw=randomBytes(32).toString('hex'
 const attempts=new Map<string,{count:number,until:number}>();
 function limit(req:any,res:any,next:any) {const now=Date.now();for(const [k,v] of attempts)if(v.until<now)attempts.delete(k);const key=String(req.ip);const state=attempts.get(key)||{count:0,until:now+15*60000};state.count++;attempts.set(key,state);if(state.count>60)return res.status(429).json({error:'Too many authentication attempts. Try again in 15 minutes.'});next();}
 export function sameOrigin(req:any,res:any,next:any) {
- if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){const allowed=(process.env.APP_ORIGINS||'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5181,http://127.0.0.1:5181,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4020,http://127.0.0.1:4020').split(',');if(!allowed.includes(req.headers.origin))return res.status(403).json({error:'Request origin is not allowed'});}next();
+ if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){const allowed=(process.env.APP_ORIGINS||'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5181,http://127.0.0.1:5181,http://localhost:4000,http://127.0.0.1:4000,http://localhost:4020,http://127.0.0.1:4020').split(',').map(s=>s.trim());const platformOrigin=process.env.RENDER_EXTERNAL_URL;if(platformOrigin?.startsWith('https://'))allowed.push(new URL(platformOrigin).origin);if(!allowed.includes(req.headers.origin))return res.status(403).json({error:'Request origin is not allowed'});}next();
 }
 async function issue(body:any,purpose:'signup'|'reset',res:any) {
  const now=Date.now();
@@ -63,7 +63,7 @@ async function issue(body:any,purpose:'signup'|'reset',res:any) {
  try {await sendOtp(body.phone,code);} catch {accounts.prepare('UPDATE otps SET used=1,payload=NULL WHERE id=?').run(id);return res.status(503).json({error:'SMS sending is unavailable. Please try again later.'});}
  const demo=smsProvider()==='mock'&&process.env.DEMO_SHOW_OTP==='true';
  // Identical response and mock behaviour for registered and unregistered recovery numbers.
- res.status(202).json({challengeId:id,expiresIn:300,resendAfter:30,message:purpose==='reset'?'If this number has an account, use the verification code to reset its password.':'Enter the verification code.',...(demo?{demoOtp:code}: {})});
+ res.status(202).json({delivery:smsProvider()==='mock'?'mock':'sms',challengeId:id,expiresIn:300,resendAfter:30,message:purpose==='reset'?'If this number has an account, use the verification code to reset its password.':'Enter the verification code.',...(demo?{demoOtp:code}: {})});
 }
 function consume(body:any,purpose:string) {
  const row=accounts.prepare('SELECT * FROM otps WHERE id=? AND purpose=?').get(body.challengeId,purpose) as any;

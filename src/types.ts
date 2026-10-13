@@ -42,6 +42,7 @@ export interface SalePoint {
 }
 
 export interface Settings {
+  maxSuggestedPriceIncreasePct?: number;
   restaurant: string;
   location: string;
   currency: string;

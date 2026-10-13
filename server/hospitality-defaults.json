@@ -1,0 +1,32 @@
+{
+  "note": "Editable planning assumptions, not measured market prices. Owners must review quality, demand and local costs.",
+  "foodCostTargetByType": {
+    "cafe": 30,
+    "qsr": 32,
+    "restaurant": 33,
+    "hotel-restaurant": 35,
+    "cloud-kitchen": 30,
+    "stall": 35,
+    "other": 30
+  },
+  "areaTargetAdjustment": {
+    "college": 2,
+    "market": 0,
+    "office": 0,
+    "tourist": -1
+  },
+  "segmentTargetAdjustment": {
+    "students": 2,
+    "families": 0,
+    "office-workers": 0,
+    "tourists": -1
+  },
+  "sensitivity": {
+    "high": { "maxPriceIncreasePct": 5, "preferRecipe": true },
+    "medium": { "maxPriceIncreasePct": 10, "preferRecipe": false },
+    "low": { "maxPriceIncreasePct": 15, "preferRecipe": false }
+  },
+  "portionReductionPct": 20,
+  "minimumStockedIngredientShare": 0.8,
+  "defaultTransferPct": 60
+}

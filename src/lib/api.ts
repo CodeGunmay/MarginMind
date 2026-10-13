@@ -27,6 +27,10 @@ export interface ExtractedItem {
 export interface AiStatus { llmConfigured: boolean; llmModel: string | null; engine: 'llm' | 'rules'; ocrAvailable: boolean; }
 
 export const api = {
+  actionPlan: (month:string) => req('/api/action-plan?month='+encodeURIComponent(month)).then(j),
+  planPreview: (body:any) => jsonReq('POST','/api/action-plan/preview',body).then(j),
+  pantryAvailability: () => req('/api/pantry-availability').then(j),
+  saveStock: (body:any) => jsonReq('PUT','/api/pantry-availability',body).then(j),
   updateExpense: (id:number,body:any) => jsonReq('PUT','/api/expenses/'+id,body).then(j),
   business: () => req('/api/business').then(j),
   saveBusiness: (body:any) => jsonReq('PUT','/api/business',body).then(j),

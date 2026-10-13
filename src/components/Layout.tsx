@@ -19,6 +19,7 @@ const NAV = [
   { to: '/expenses', label: 'Expenses & Profit', icon: BarChart3 },
   { to: '/ingredients', label: 'Ingredient Costs', icon: ShoppingBasket },
   { to: '/ai', label: 'AI Recommendations', icon: Sparkles },
+  { to: '/action-plan', label: 'Action Plan', icon: CheckCircle2 },
   { to: '/simulator', label: 'Scenario Simulator', icon: FlaskConical },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
@@ -33,6 +34,7 @@ const TITLES: [RegExp, string][] = [
   [/^\/expenses/, 'Expenses & Profit'],
   [/^\/ingredients/, 'Ingredient Cost Intelligence'],
   [/^\/ai/, 'AI Recommendations'],
+  [/^\/action-plan/, 'Action Plan'],
   [/^\/simulator/, 'Scenario Simulator'],
   [/^\/reports/, 'Reports'],
   [/^\/settings/, 'Settings'],
@@ -56,17 +58,17 @@ function BackendBadge() {
   const { connected, booting } = useApp();
   if (booting) {
     return (
-      <span className="hidden md:flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-400" title="Connecting to the backendâ€¦">
-        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-pulse" /> Connectingâ€¦
+      <span className="hidden md:flex items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-400" title="Connecting to the backend…">
+        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 animate-pulse" /> Connecting…
       </span>
     );
   }
   return connected ? (
-    <span className="hidden md:flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700" title="API + SQLite connected â€” changes are persisted" data-testid="backend-badge">
+    <span className="hidden md:flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700" title="API + SQLite connected — changes are persisted" data-testid="backend-badge">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Connected
     </span>
   ) : (
-    <span className="hidden md:flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700" title="Backend API unreachable â€” data lives in this browser only" data-testid="backend-badge">
+    <span className="hidden md:flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700" title="Backend API unreachable — data lives in this browser only" data-testid="backend-badge">
       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Connection unavailable
     </span>
   );
@@ -158,11 +160,12 @@ export default function Layout() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && q.trim()) nav(`/menu?q=${encodeURIComponent(q.trim())}`); }}
-              placeholder="Search dishesâ€¦"
+              placeholder="Search dishes…"
               className="w-44 xl:w-56 rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2 text-sm outline-none focus:border-amber-400 focus:bg-white transition-colors"
             />
           </div>
 
+          {['/action-plan','/expenses'].includes(loc.pathname)?<span className="text-sm text-slate-500">Monthly view</span>:(
           <select
             value={range}
             onChange={(e) => setRange(Number(e.target.value) as 7 | 30 | 90)}
@@ -173,6 +176,7 @@ export default function Layout() {
             <option value={30}>30 days</option>
             <option value={90}>90 days</option>
           </select>
+          )}
 
           <div className="relative" ref={bellRef}>
             <button onClick={() => setBellOpen((v) => !v)} className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-600" aria-label="Notifications">
@@ -187,7 +191,7 @@ export default function Layout() {
               <div className="absolute right-0 mt-2 w-[340px] bg-white rounded-2xl shadow-pop border border-slate-200 z-50 anim-fade-up overflow-hidden">
                 <div className="px-4 py-3 border-b border-slate-100 font-semibold text-sm">Alerts</div>
                 <div className="max-h-80 overflow-y-auto">
-                  {alerts.length === 0 && <div className="p-4 text-sm text-slate-500">All clear â€” no alerts right now.</div>}
+                  {alerts.length === 0 && <div className="p-4 text-sm text-slate-500">All clear — no alerts right now.</div>}
                   {alerts.map((a, i) => (
                     <button key={i} onClick={() => nav(a.to)} className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 flex gap-3 items-start">
                       <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${a.level === 'high' ? 'bg-rose-500' : a.level === 'attention' ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ animation: 'pulseDot 2s infinite' }} />
@@ -214,7 +218,7 @@ export default function Layout() {
           {booting ? (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-400">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white animate-pulse">MM</div>
-              <p className="text-sm font-medium">Loading menu intelligenceâ€¦</p>
+              <p className="text-sm font-medium">Loading menu intelligence…</p>
               <p className="text-xs">Checking backend connection</p>
             </div>
           ) : (

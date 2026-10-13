@@ -1,0 +1,22 @@
+# Prototype-only: local account and restaurant data can reset on restarts.
+services:
+  - type: web
+    name: marginmind
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_FILE
+        value: ./server/data/marginmind.db
+      - key: APP_PROXY_HOPS
+        value: 1
+      - key: SMS_PROVIDER
+        value: mock
+      - key: DEMO_SHOW_OTP
+        value: "false"

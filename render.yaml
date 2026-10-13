@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: marginmind
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    disk:
+      name: marginmind-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_FILE
+        value: /var/data/marginmind.db
+      - key: APP_PROXY_HOPS
+        value: 1
+      - key: SMS_PROVIDER
+        value: mock
+      - key: DEMO_SHOW_OTP
+        value: "false"
