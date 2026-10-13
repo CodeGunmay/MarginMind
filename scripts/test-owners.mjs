@@ -1,0 +1,83 @@
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import fs from 'node:fs';
+import path from 'node:path';
+const base='http://127.0.0.1:4620/api';
+const directory=path.resolve('verification-data/owners-'+Date.now());fs.mkdirSync(directory,{recursive:true});
+const env={...process.env,PORT:'4620',DATABASE_FILE:path.join(directory,'legacy.db'),SMS_PROVIDER:'mock',DEMO_SHOW_OTP:'true'};
+const start=()=>spawn(process.execPath,['--import','tsx','server/index.ts'],{env,stdio:'ignore'});
+async function wait(p){for(let i=0;i<70;i++){if(p.exitCode!==null)throw Error('Backend exited');try{if((await fetch(base+'/auth/me')).ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}throw Error('Backend startup failed');}
+async function stop(p){const ended=once(p,'exit');p.kill();await ended;}
+let passed=0;
+function check(name,ok){if(!ok)throw Error('FAIL '+name);passed++;console.log('PASS '+name);}
+async function request(route,body,cookie='',method=body?'POST':'GET',headers={}){const r=await fetch(base+route,{method,headers:{'Content-Type':'application/json',Cookie:cookie,...headers},body:body?JSON.stringify(body):undefined});const json=await r.json();return {status:r.status,json,cookie:r.headers.get('set-cookie')?.split(';')[0]||'',headers:r.headers};}
+let p=start();
+try{
+ await wait(p);
+ check('anonymous private API denied',(await request('/bootstrap')).status===401);
+ check('anonymous session is empty',(await request('/auth/me')).json.user===null);
+ check('weak password rejected',(await request('/auth/signup',{phone:'9000000011',password:'short',owner:'Owner A',restaurant:'Restaurant A',location:'Dehradun'})).status===400);
+ const ap=await request('/auth/signup',{phone:'9000000011',password:'OnlyForAutomatedTesting42',owner:'Owner A',restaurant:'Restaurant A',location:'Dehradun'});
+ const a=await request('/auth/signup/verify',{challengeId:ap.json.challengeId,code:ap.json.demoOtp});
+ check('owner A signup',a.status===201);check('HttpOnly session cookie',a.headers.get('set-cookie').includes('HttpOnly'));
+ check('SameSite session cookie',a.headers.get('set-cookie').toLowerCase().includes('samesite=strict'));
+ check('OTP verified account',a.json.user.phoneVerified===true);
+ const ac=a.cookie;
+ const bp=await request('/auth/signup',{phone:'9000000022',password:'OnlyForAutomatedTesting43',owner:'Owner B',restaurant:'Restaurant B',location:'Rishikesh'});
+ const b=await request('/auth/signup/verify',{challengeId:bp.json.challengeId,code:bp.json.demoOtp});
+ check('owner B signup',b.status===201);const bc=b.cookie;
+ let r=await request('/bootstrap',undefined,ac);check('new restaurant menu empty',r.json.dishes.length===0);check('new pantry empty',r.json.ings.length===0);check('restaurant profile saved',r.json.settings.restaurant==='Restaurant A');
+ check('duplicate phone rejected',(await request('/auth/signup',{phone:'+919000000011',password:'OnlyForAutomatedTesting42',owner:'Owner A',restaurant:'Other',location:'Other'})).status===409);
+ check('wrong password rejected',(await request('/auth/login',{phone:'9000000011',password:'WrongPassword42'})).status===401);
+ check('login with normalized number',(await request('/auth/login',{phone:'+919000000011',password:'OnlyForAutomatedTesting42'})).status===200);
+ check('cross-origin mutation rejected',(await request('/settings',{restaurant:'Attacker'},ac,'PATCH',{Origin:'https://malicious.example'})).status===403);
+ const ingredient={id:'rice',name:'Rice',unit:'kg',price:100};
+ check('add ingredient A',(await request('/ingredients',ingredient,ac)).status===201);
+ check('same ingredient id works privately in B',(await request('/ingredients',{...ingredient,price:200},bc)).status===201);
+ const dish={id:'rice-bowl',name:'Rice Bowl',cat:'Main course',price:150,servings:1,wastage:0,gasCost:5,recipe:[{ing:'rice',qty:100,unit:'g'}]};
+ check('create owner recipe',(await request('/dishes',dish,ac)).status===201);
+ check('incomplete recipe rejected',(await request('/dishes',{...dish,id:'incomplete',recipe:[]},ac)).status===400);
+ check('wrong recipe unit rejected',(await request('/dishes',{...dish,id:'wrong-unit',recipe:[{ing:'rice',qty:100,unit:'ml'}]},ac)).status===400);
+ check('other owner cannot read dish',(await request('/dishes/rice-bowl',undefined,bc)).status===404);
+ check('other owner cannot edit dish',(await request('/dishes/rice-bowl',{...dish,price:1},bc,'PUT')).status===404);
+ r=await request('/analysis/dish/rice-bowl',undefined,ac);check('recipe costing uses owner prices',r.json.dish.cost===15);
+ const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ check('record actual sales',[200,201].includes((await request('/sales',{dishId:dish.id,date,units:10},ac)).status));
+ r=await request('/analysis/menu',undefined,ac);check('actual revenue',r.json.totals.revenue===1500);check('actual contribution',r.json.totals.contribution===1350);
+
+ const month=date.slice(0,7);
+ check('business profile saves',(await request('/business',{businessType:'cafe',location:'Dehradun'},ac,'PUT')).status===200);
+ check('business profile isolated',(await request('/business',undefined,bc)).json.location==='Rishikesh');
+ check('record rent',(await request('/expenses',{date,category:'Rent',kind:'fixed',amount:100,note:'Monthly share'},ac)).status===201);
+ check('record commission',(await request('/expenses',{date,category:'Delivery commissions',kind:'variable',amount:50},ac)).status===201);
+ check('negative expense rejected',(await request('/expenses',{date,category:'Rent',kind:'fixed',amount:-1},ac)).status===400);
+ check('invalid expense date rejected',(await request('/expenses',{date:'2026-02-30',category:'Rent',kind:'fixed',amount:1},ac)).status===400);
+ const profit=(await request('/expenses?month='+month,undefined,ac)).json;
+ check('expense sum accurate',profit.total===150&&profit.fixed===100&&profit.variable===50);
+ check('operating profit accurate',profit.estimatedOperatingProfit===1200&&profit.directCosts===150);
+ check('break-even calculation accurate',Math.abs(profit.breakEvenRevenue-100/(1300/1500))<0.000001);
+ check('dish allocation accurate',profit.allocatedDishes[0].allocatedExpense===150&&profit.allocatedDishes[0].estimatedProfit===1200);
+ check('expenses private',(await request('/expenses?month='+month,undefined,bc)).json.total===0);
+ check('no-sales break-even unavailable',(await request('/expenses?month='+month,undefined,bc)).json.breakEvenRevenue===null);
+ check('expense correction',(await request('/expenses/'+profit.expenses[0].id,{date,category:'Delivery commissions',kind:'variable',amount:50,note:'Corrected'},ac,'PUT')).status===200);
+ check('other account cannot correct expense',(await request('/expenses/'+profit.expenses[0].id,{date,category:'Rent',kind:'fixed',amount:1},bc,'PUT')).status===404);
+ check('invalid month rejected',(await request('/expenses?month=2026-13',undefined,ac)).status===400);
+ check('B has no A sales',(await request('/analysis/menu',undefined,bc)).json.totals.revenue===0);
+ check('update price',(await request('/dishes/rice-bowl',{...dish,price:200},ac,'PUT')).status===200);
+ check('historic revenue retained',(await request('/analysis/menu',undefined,ac)).json.totals.revenue===1500);
+ check('invalid date rejected',(await request('/sales',{dishId:dish.id,date:'2026-02-30',units:2},ac)).status===400);
+ check('decimal recipe parsing',(await request('/extract-recipe',{text:'Rice 0.5 kg'},ac)).json.items[0].qty===500);
+ check('unknown costs not invented',(await request('/extract-recipe',{text:'Saffron 5 g'},ac)).json.items[0].estimatedCost===null);
+ check('blank CSV rejected',(await request('/sales/import',{csv:`dish,date,units\nrice-bowl,${date},`,commit:false},ac)).json.errorRows===1);
+ check('simulation excludes fixed overhead',(await request('/simulate',{dishId:dish.id,inflPct:10},ac)).json.pro.cost===16);
+ check('sample reseeding unavailable',(await request('/reset',{mode:'demo'},ac)).status===400);
+ const pairs=await Promise.all(Array.from({length:12},(_,i)=>request('/bootstrap',undefined,i%2?ac:bc)));
+ check('concurrent accounts remain isolated',pairs.every((r,i)=>r.json.ings[0].price===(i%2?100:200)));
+ await stop(p);p=start();await wait(p);
+ check('session survives backend restart',(await request('/auth/me',undefined,ac)).json.user.owner==='Owner A');
+ check('restaurant data survives restart',(await request('/bootstrap',undefined,ac)).json.dishes[0].price===200);
+ check('logout succeeds',(await request('/auth/logout',{},ac)).status===200);
+ check('logged-out session rejected',(await request('/bootstrap',undefined,ac)).status===401);
+ check('B session unaffected by A logout',(await request('/bootstrap',undefined,bc)).status===200);
+ console.log(`${passed} checks passed`);fs.writeFileSync(path.join(directory,'results.json'),JSON.stringify({passed,failed:0},null,2));
+}catch(e){console.error(e.message);process.exitCode=1;}finally{if(p.exitCode===null)await stop(p);}
