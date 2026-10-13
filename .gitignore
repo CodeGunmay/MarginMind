@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+server/data/
+verification-data/
+*.db
+*.db-shm
+*.db-wal
+*.traineddata
+*.log
+*.local
+.DS_Store

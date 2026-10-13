@@ -1,0 +1,13 @@
+import React from 'react';
+import {Link} from 'react-router-dom';
+import {ShoppingBasket,ChefHat,BarChart3,ArrowRight,CheckCircle2} from 'lucide-react';
+import {useApp} from '../store/AppContext';
+export default function GettingStarted(){
+ const {ings,dishes,analyzed,settings,booting}=useApp();
+ const costed=dishes.filter(d=>d.price>0&&d.recipe.length>0&&d.recipe.every(r=>r.qty>0&&(r.ing?ings.some(i=>i.id===r.ing&&i.price>0):(r.fixedCost||0)>0))).length;
+ const steps=[{icon:ShoppingBasket,title:'Add ingredient prices',body:'Enter supplier prices per kilogram, litre or piece.',to:'/ingredients',done:ings.length>0},
+ {icon:ChefHat,title:'Build your menu & recipes',body:'Add selling prices, quantities, portions and wastage.',to:'/costing?dish=new',done:dishes.length>0&&costed===dishes.length},
+ {icon:BarChart3,title:'Record your first sales',body:'Enter daily quantities or upload your sales CSV.',to:'/sales',done:analyzed.totals.units>0}];
+ if(booting||steps.every(s=>s.done))return null;
+ return <section className="mb-6 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 sm:p-7"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-amber-700">Your restaurant workspace</p><h2 className="text-xl font-bold mt-2 tracking-tight">Let’s get {settings.restaurant||'your restaurant'} ready.</h2><p className="text-sm text-slate-500 mt-2">Start with your own numbers. We’ll turn them into useful decisions.</p></div><span className="text-xs text-amber-700 rounded-full bg-amber-100 px-3 py-1 whitespace-nowrap">{steps.filter(s=>s.done).length}/3 ready</span></div><div className="grid md:grid-cols-3 gap-3 mt-6">{steps.map((s,i)=><Link key={s.title} to={s.to} className="rounded-xl border border-slate-200 bg-white p-4 hover:border-amber-400 transition-colors"><div className="flex justify-between"><s.icon size={21} className={s.done?'text-emerald-600':'text-amber-600'}/>{s.done?<CheckCircle2 size={18} className="text-emerald-600"/>:<span className="text-xs text-slate-400">0{i+1}</span>}</div><h3 className="text-sm font-semibold mt-4">{s.title}</h3><p className="text-xs text-slate-500 mt-2 leading-relaxed">{s.body}</p><span className="inline-flex gap-1 items-center text-xs text-amber-700 font-semibold mt-4">{s.done?'Manage':'Get started'}<ArrowRight size={12}/></span></Link>)}</div><p className="text-[11px] text-slate-500 mt-4">Contribution is revenue minus recipe costs. It is not net profit after rent, wages and other operating expenses. Complete recipes before trusting margins.</p></section>;
+}
